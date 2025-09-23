@@ -2,6 +2,23 @@
 Back-End/node_modules/
 Front-End/node_modules/
 
+Front-End/logs
+Front-End/npm-debug.log*
+Front-End/yarn-debug.log*
+Front-End/yarn-error.log*
+Front-End/pnpm-debug.log*
+Front-End/lerna-debug.log*
+
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
 # Optional: also ignore logs, env files, and build outputs
 *.log
 .env

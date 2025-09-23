@@ -7,14 +7,18 @@ dotenv.config();
 
 const app = express();
 
-
-
 const PORT = process.env.PORT;
+
+app.use(express.json());
 
 app.use('/api/test',testRoutes);
 
+app.use('/api/home/:id', (req,res) => {
+  res.send("Hii");
+});
+
 connectDb().then(() => {
   app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 });
