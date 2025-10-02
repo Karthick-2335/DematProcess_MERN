@@ -6,20 +6,26 @@ interface LabelProps {
   htmlFor?: string;
   children: ReactNode;
   className?: string;
+  mandatory?: boolean;
 }
 
-const Label: FC<LabelProps> = ({ htmlFor, children, className }) => {
+const Label: FC<LabelProps> = ({ htmlFor, children, className, mandatory }) => {
   return (
     <label
       htmlFor={htmlFor}
       className={clsx(
         twMerge(
           "mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400",
-          className,
-        ),
+          className
+        )
       )}
     >
-      {children}
+      {children}{" "}
+      {mandatory ? (
+        <span className="text-red-400 font-large text-sm">*</span>
+      ) : (
+        ""
+      )}
     </label>
   );
 };

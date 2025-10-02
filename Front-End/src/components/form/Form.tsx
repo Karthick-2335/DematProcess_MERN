@@ -9,6 +9,7 @@ interface FormProps {
 const Form: FC<FormProps> = ({ onSubmit, children, className }) => {
   return (
     <form
+      autoComplete="off"
       onSubmit={(event) => {
         event.preventDefault(); // Prevent default form submission
         onSubmit(event);

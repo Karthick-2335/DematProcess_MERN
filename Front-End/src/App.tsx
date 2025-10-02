@@ -18,6 +18,8 @@ import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
+import KycInfo from "./pages/KycForm/kycInfo";
+import KycLayout from "./pages/KycForm/KycLayout";
 
 export default function App() {
   return (
@@ -31,7 +33,8 @@ export default function App() {
 
             {/* Others Page */}
             <Route path="/profile" element={<UserProfiles />} />
-            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/kycinfo" element={<KycInfo />} />
+            <Route path="/kyclayout" element={<KycLayout />} />
             <Route path="/blank" element={<Blank />} />
 
             {/* Forms */}
