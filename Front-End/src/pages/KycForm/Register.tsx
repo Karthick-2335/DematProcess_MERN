@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -12,11 +12,14 @@ import WithLoader from "../../components/Loader/WithLoader";
 import { getRequest, postRequest } from "../../services/axios";
 import { Option } from "../../components/form/Select";
 import Switch from "../../components/form/switch/Switch";
+import { KycContext } from "../../context/KycContext";
+import { useNavigate } from "react-router";
 
 export type StageProps = {
   btnPrevious: () => void;
   btnNext: () => void;
   activeTab: number;
+  paramId: string | undefined;
 };
 
 interface PrimaryHolder {
@@ -77,6 +80,8 @@ interface Others {
   lei_validity: string;
 }
 interface Registration {
+  _id: string;
+  id: string;
   primaryHolder: PrimaryHolder;
   secondHolder: SecondHolder;
   thirdHolder: ThirdHolder;
@@ -89,7 +94,6 @@ interface Registration {
   isSecondHolder: boolean;
   isThirdHolder: boolean;
 }
-
 interface TaxMaster {
   id: string;
   code: string;
@@ -100,32 +104,20 @@ interface OccupationMaster {
   code: string;
   details: string;
 }
-interface PanExemptCatMaster {
-  id: string;
-  code: string;
-  description: string;
-}
 interface HoldingNatureMaster {
   id: string;
   code: string;
   details: string;
 }
-interface GuardianRelationMaster {
+interface PanExemptCatMaster {
   id: string;
   code: string;
-  value: string;
+  description: string;
 }
 
-const Register = ({ btnPrevious, btnNext, activeTab }: StageProps) => {
+const Register = ({ btnPrevious, btnNext, activeTab, paramId }: StageProps) => {
   const [loading, setLoading] = useState(false);
-  const [taxMaster, setTaxMaster] = useState<TaxMaster[] | null>(null);
-  const [occupation, setOccupation] = useState<OccupationMaster[] | null>(null);
-  const [holdingNature, setHoldingNature] = useState<
-    HoldingNatureMaster[] | null
-  >(null);
-  const [guardinaRelation, setGuardianRelation] = useState<
-    GuardianRelationMaster[] | null
-  >(null);
+  const navigate = useNavigate();
   const [exemptCat, enableExemptCat] = useState<boolean>(false);
   const [exemptCatSH, enableExemptCatSH] = useState<boolean>(false);
   const [exemptCatTH, enableExemptCatTH] = useState<boolean>(false);
@@ -133,6 +125,15 @@ const Register = ({ btnPrevious, btnNext, activeTab }: StageProps) => {
   const [secondHolder, enableSecondHolder] = useState<boolean>(false);
   const [thirdHolder, enableThirdHolder] = useState<boolean>(false);
   const [guardian, enableGuardian] = useState<boolean>(false);
+  const [taxMaster, setTaxMaster] = useState<TaxMaster[] | null>(null);
+  const [occupation, setOccupation] = useState<OccupationMaster[] | null>(null);
+  const [holdingNature, setHoldingNature] = useState<
+    HoldingNatureMaster[] | null
+  >(null);
+  const [panExemptCat, setPanExemptCat] = useState<PanExemptCatMaster[] | null>(
+    null
+  );
+  const contextProvider = useContext(KycContext);
   const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
   const panNameRegex = /^[A-Za-z ]+$/;
 
@@ -154,9 +155,6 @@ const Register = ({ btnPrevious, btnNext, activeTab }: StageProps) => {
     return age >= 18;
   };
 
-  const [panExemptCat, setPanExemptCat] = useState<PanExemptCatMaster[] | null>(
-    null
-  );
   const genderOptions: Option[] = [
     { value: "F", label: "Female" },
     { value: "M", label: "Male" },
@@ -352,10 +350,63 @@ const Register = ({ btnPrevious, btnNext, activeTab }: StageProps) => {
     return `KR${randomDigits}`;
   }
   const onSubmit = async (data: Registration) => {
-    console.log(JSON.stringify(data));
-    const resp = await postRequest("kyc/kyc_register", data);
-    if (resp.success) {
-      alert("submited");
+    setLoading(true);
+    try {
+      let resp: any;
+
+      if (paramId) {
+        data.id = paramId;
+      }
+
+      resp = await postRequest<Registration>("kyc/register", data);
+
+      if (resp.success) {
+        console.log(resp);
+        contextProvider?.setMinor(data.isMinor);
+        contextProvider?.setNri(data.isNri);
+        contextProvider?.setSecondHolder(data.isSecondHolder);
+        contextProvider?.setThirdHolder(data.isThirdHolder);
+        if (!paramId) navigate(`/kyclayout/${resp.data._id}`);
+        btnNext();
+      }
+    } catch (err) {
+      console.error("Error fetching tax master:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRegisterInfo = async () => {
+    if (!paramId) return null;
+    setLoading(true);
+    try {
+      const response = await getRequest("kyc/register/" + paramId);
+      if (response.success) {
+        const stringResponse = JSON.stringify(response.data);
+        const bindRegisterInfo = JSON.parse(stringResponse);
+        contextProvider?.setMinor(bindRegisterInfo.isMinor);
+        contextProvider?.setNri(bindRegisterInfo.isNri);
+        contextProvider?.setSecondHolder(bindRegisterInfo.isSecondHolder);
+        contextProvider?.setThirdHolder(bindRegisterInfo.isThirdHolder);
+        reset(bindRegisterInfo);
+      }
+    } catch (err) {
+      console.error("Error fetching KYC register:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const fetchPanExemptCat = async () => {
+    setLoading(true);
+    try {
+      const data = await getRequest("master/pan_exemptcat_master");
+      if (data.success) {
+        setPanExemptCat(data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching tax master:", err);
+    } finally {
+      setLoading(false);
     }
   };
   const fetchTaxMaster = async () => {
@@ -397,77 +448,50 @@ const Register = ({ btnPrevious, btnNext, activeTab }: StageProps) => {
       setLoading(false);
     }
   };
-  const fetchPanExemptCat = async () => {
-    setLoading(true);
-    try {
-      const data = await getRequest("master/pan_exemptcat_master");
-      if (data.success) {
-        setPanExemptCat(data.data);
-      }
-    } catch (err) {
-      console.error("Error fetching tax master:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  const fetchGuardianRelation = async () => {
-    setLoading(true);
-    try {
-      const data = await getRequest("master/nomineeandguardrel_masters");
-      if (data.success) {
-        setGuardianRelation(data.data);
-      }
-    } catch (err) {
-      console.error("Error fetching tax master:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  const taxOptions: Option[] =
-    taxMaster?.map((x) => ({
-      ...x,
-      label: x.status,
-      value: x.code,
-    })) ?? [];
+  const taxOptions: Option[] = useMemo(() => {
+    return (
+      taxMaster?.map((x) => ({
+        ...x,
+        label: x.status,
+        value: x.code,
+      })) ?? []
+    );
+  }, [taxMaster]);
 
-  const occupationOptions: Option[] =
-    occupation?.map((x) => ({
-      ...x,
-      label: x.details,
-      value: x.code,
-    })) ?? [];
+  const occupationOptions: Option[] = useMemo(() => {
+    return (
+      occupation?.map((x) => ({
+        ...x,
+        label: x.details,
+        value: x.code,
+      })) ?? []
+    );
+  }, [occupation]);
 
-  const holdingOptions: Option[] =
-    holdingNature?.map((x) => ({
-      ...x,
-      label: x.details,
-      value: x.code,
-    })) ?? [];
-
-  const panExemptCatOptions: Option[] =
-    panExemptCat?.map((x) => ({
-      ...x,
-      label: x.description,
-      value: x.code,
-    })) ?? [];
-
-  const guardianRelationOptions: Option[] =
-    guardinaRelation?.map((x) => ({
-      ...x,
-      label: x.value,
-      value: x.code,
-    })) ?? [];
+  const holdingOptions: Option[] = useMemo(() => {
+    return (
+      holdingNature?.map((x) => ({
+        ...x,
+        label: x.details,
+        value: x.code,
+      })) ?? []
+    );
+  }, [holdingNature]);
+  const panExemptCatOptions: Option[] = useMemo(() => {
+    return (
+      panExemptCat?.map((x) => ({
+        ...x,
+        label: x.description,
+        value: x.code,
+      })) ?? []
+    );
+  }, [panExemptCat]);
   useEffect(() => {
+    fetchPanExemptCat();
     fetchTaxMaster();
     fetchOccupation();
     fetchHoldingNature();
-    fetchPanExemptCat();
-    fetchGuardianRelation();
-
-    const fdf =
-      '{"others":{},"gurdianIfMinor":{"firstName":"RAMA","middleName":"D","lastName":"KRISHANAN","pan":"AMWPT9435E","dob":"02-10-2025","panExempt":"Y","relation":"06","exemptCategory":"04"},"thirdHolder":{"firstName":"VALLI","middleName":"S","lastName":"R","pan":"GHCPM4611Q","dob":"02-10-2025","panExempt":"Y","exemptCategory":"02"},"secondHolder":{"firstName":"MOHAN ","middleName":"T","lastName":"RAJ","pan":"BODPB5126C","dob":"02-10-2025","panExempt":"Y","exemptCategory":"01"},"primaryHolder":{"firstName":"KARTHIK","middleName":"K","lastName":"R","taxStatus":"01","pan":"IJXPK5582H","dob":"02-10-2025","gender":"M","occupationCode":"03","holdingNature":"JO","panExempt":"Y","exemptCategory":"02"},"isThirdHolder":true,"isSecondHolder":true,"isMinor":true,"isDigiLocker":false,"isKra":false,"isNri":false}';
-    const resu: Registration = JSON.parse(fdf);
-    reset(resu);
+    fetchRegisterInfo();
   }, [reset]);
   const PrimaryPanExemptValue = watch("primaryHolder.panExempt");
   const SecondPanExemptValue = watch("secondHolder.panExempt");
@@ -488,6 +512,12 @@ const Register = ({ btnPrevious, btnNext, activeTab }: StageProps) => {
 
     const checkedGuardian = GuardianPanExemptValue === "Y";
     enableExemptCatGuardian(checkedGuardian);
+    contextProvider?.setJoinHolderPanExempt([
+      checked,
+      checkedSH,
+      checkedTH,
+      checkedGuardian,
+    ]);
 
     const checkedThirdHolder = ensureThirdHolder;
     enableThirdHolder(checkedThirdHolder);
@@ -598,6 +628,19 @@ const Register = ({ btnPrevious, btnNext, activeTab }: StageProps) => {
                         success={
                           isSubmitted && !errors.primaryHolder?.taxStatus
                         }
+                        onChange={(value: string) => {
+                          const nriResident: string[] = [
+                            "11",
+                            "21",
+                            "24",
+                            "26",
+                            "27",
+                            "28",
+                            "29",
+                          ];
+                          setValue("isNri", nriResident.includes(value));
+                          setValue("primaryHolder.taxStatus", value);
+                        }}
                       />
                     )}
                   />
@@ -1366,7 +1409,7 @@ const Register = ({ btnPrevious, btnNext, activeTab }: StageProps) => {
                         <Select
                           {...field}
                           defaultValue={field.value}
-                          options={guardianRelationOptions}
+                          options={contextProvider?.getRelationMaster ?? []}
                           error={!!errors.gurdianIfMinor?.relation}
                           hint={errors.gurdianIfMinor?.relation?.message || ""}
                           success={

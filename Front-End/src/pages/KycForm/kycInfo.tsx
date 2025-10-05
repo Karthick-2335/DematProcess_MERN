@@ -1,8 +1,9 @@
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import ComponentCard from "../../components/common/ComponentCard";
 import PageMeta from "../../components/common/PageMeta";
-import { useNavigate } from "react-router";
 import Input from "../../components/form/input/InputField";
+import WithLoader from "../../components/Loader/WithLoader";
+import { getRequest } from "../../services/axios";
 import {
   Table,
   TableBody,
@@ -10,9 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BoxIcon } from "../../icons";
 import Button from "../../components/ui/button/Button";
+import { useNavigate } from "react-router";
 
 interface UserInfo {
   applicationNo: string;
@@ -22,49 +24,68 @@ interface UserInfo {
   mobile: string;
   createdon: string;
   status: string;
+  id: string;
 }
-const users: UserInfo[] = [
-  {
-    applicationNo: "APP001",
-    userName: "Alice Johnson",
-    panNumber: "ABCDE1234F",
-    email: "alice.johnson@example.com",
-    mobile: "9876543210",
-    createdon: "2025-09-29",
-    status: "Pending",
-  },
-  {
-    applicationNo: "APP002",
-    userName: "Bob Smith",
-    panNumber: "XYZAB5678K",
-    email: "bob.smith@example.com",
-    mobile: "9123456789",
-    createdon: "2025-09-28",
-    status: "Approved",
-  },
-  {
-    applicationNo: "APP003",
-    userName: "Charlie Brown",
-    panNumber: "LMNOP9876Q",
-    email: "charlie.brown@example.com",
-    mobile: "9988776655",
-    createdon: "2025-09-27",
-    status: "Rejected",
-  },
-];
-const kycInfo = () => {
+
+const PAGE_SIZE = 5; // Number of rows per page
+
+const KycInfo = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<UserInfo[]>();
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<UserInfo[]>([]);
+  const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Fetch KYC Info
+  const fetchInfo = async () => {
+    setLoading(true);
+    try {
+      const resp = await getRequest<UserInfo[]>("kyc/get_kycinfo");
+      if (resp.success) {
+        setUser(resp.data);
+      }
+    } catch (err) {
+      console.error("Error fetching KYC info:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setUser(users);
+    fetchInfo();
   }, []);
+
+  // Filtered data
+  const filteredData = useMemo(() => {
+    return user.filter((item) => {
+      const query = search.toLowerCase();
+      return (
+        item.userName?.toLowerCase().includes(query) ||
+        item.panNumber?.toLowerCase().includes(query) ||
+        item.mobile?.toLowerCase().includes(query)
+      );
+    });
+  }, [search, user]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredData.slice(start, start + PAGE_SIZE);
+  }, [currentPage, filteredData]);
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  };
+
   return (
-    <>
+    <WithLoader loading={loading}>
       <PageMeta
-        title="React.js Basic Tables Dashboard | TailAdmin - Next.js Admin Dashboard Template"
-        description="This is React.js Basic Tables Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
+        title="KYC Information | Admin Dashboard"
+        description="KYC Info table with search and pagination"
       />
       <PageBreadcrumb pageTitle="KYC Information" />
+
       <div className="space-y-6">
         <ComponentCard title="">
           <div className="flex flex-col sm:flex-row justify-between gap-4 sm:gap-6 mb-4">
@@ -76,13 +97,20 @@ const kycInfo = () => {
             >
               NEW KYC
             </Button>
+
             <Input
               type="text"
               name="search"
-              placeholder="Search from the keyword"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Search by Name, PAN, or Mobile"
               className="w-full sm:w-64"
             />
           </div>
+
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
             <div className="max-w-full overflow-x-auto">
               <Table>
@@ -128,36 +156,78 @@ const kycInfo = () => {
                 </TableHeader>
 
                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                  {users.map((user) => (
-                    <TableRow key={user.applicationNo}>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {user.applicationNo}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {user.userName}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {user.panNumber}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {user.mobile}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {user.createdon}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                        {user.status}
+                  {paginatedData.length > 0 ? (
+                    paginatedData.map((u) => (
+                      <TableRow
+                        key={u.id}
+                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                        onClick={() => navigate(`/kyclayout/${u.id}`)}
+                      >
+                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                          {u.applicationNo}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                          {u.userName}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                          {u.panNumber}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                          {u.mobile}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                          {u.createdon}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                          {u.status}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell className="px-4 py-3 text-center text-gray-400">
+                        No records found.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>
           </div>
+
+          {/* Pagination Controls */}
+          <div className="flex justify-between items-center mt-4 px-2">
+            <p className="text-gray-500 text-sm">
+              Showing {(currentPage - 1) * PAGE_SIZE + 1}–
+              {Math.min(currentPage * PAGE_SIZE, filteredData.length)} of{" "}
+              {filteredData.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+              >
+                Prev
+              </Button>
+              <span className="text-gray-600 dark:text-gray-300">
+                Page {currentPage} of {totalPages || 1}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === totalPages || totalPages === 0}
+                onClick={() => handlePageChange(currentPage + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </ComponentCard>
       </div>
-    </>
+    </WithLoader>
   );
 };
 
-export default kycInfo;
+export default KycInfo;

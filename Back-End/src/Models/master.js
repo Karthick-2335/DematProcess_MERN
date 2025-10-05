@@ -79,4 +79,49 @@ const guardianRelation_masterScheme = new mongoose.Schema({
 
 const nomineeandguardrel_masters = mongoose.model('nomineeandguardrel_masters',guardianRelation_masterScheme);
 
-export {tax_master,occupation_master,holding_nature_master,pan_exemptcat_master,nomineeandguardrel_masters};
+
+const state_masterScheme = new mongoose.Schema({
+    code : {
+        type : String,
+        required : true
+    },
+    name : {
+        type : String,
+        required : true
+    }
+},{timestamps : true})
+
+
+const state_master = mongoose.model('state_master',state_masterScheme);
+
+const country_masterScheme = new mongoose.Schema({
+    code : {
+        type : String,
+        required : true
+    },
+    name : {
+        type : String,
+        required : true
+    }
+},{timestamps : true})
+
+
+const country_master = mongoose.model('country_master',country_masterScheme);
+
+const addressproof_masterScheme = new mongoose.Schema({
+    idTypeId : {
+        type : Number,
+        required : true
+    },
+    idType : {
+        type : String,
+        required : true
+    }
+},{timestamps : true})
+
+
+const addressproof_master = mongoose.model('addressproof_master',addressproof_masterScheme);
+
+
+export {tax_master,occupation_master,holding_nature_master,pan_exemptcat_master,
+    nomineeandguardrel_masters,state_master,country_master,addressproof_master};
