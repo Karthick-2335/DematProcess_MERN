@@ -5,21 +5,61 @@ import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import Form from "../form/Form";
+import { postRequest } from "../../services/axios";
+import { useNavigate } from "react-router";
+import toast from "react-hot-toast";
 
+interface SignInfo {
+  email: string;
+  password: string;
+}
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
+  const navigate = useNavigate();
+  const signUpSchema = yup.object({
+    email: yup
+      .string()
+      .email("Enter a valid email address")
+      .required("Email is required"),
+    password: yup
+      .string()
+      .required("Password is required")
+      .min(8, "Password must be at least 8 characters")
+      .matches(/[A-Z]/, "Must contain at least one uppercase letter")
+      .matches(/[a-z]/, "Must contain at least one lowercase letter")
+      .matches(/[0-9]/, "Must contain at least one number")
+      .matches(/[!@#$%^&*]/, "Must contain at least one special character"),
+  });
+  const {
+    handleSubmit,
+    control,
+    reset,
+    setValue,
+    formState: { errors, isSubmitted },
+  } = useForm<SignInfo>({
+    resolver: yupResolver(signUpSchema),
+    mode: "onBlur",
+  });
+  const onSubmit = async (data: SignInfo) => {
+    try {
+      const resp = await postRequest("auth/login", data);
+      if (resp.success) {
+        localStorage.setItem("token", resp.data);
+        navigate(`/Home`);
+      } else {
+        toast.error("Failed to Login");
+      }
+    } catch (err) {
+      console.error("Error fetching tax master:", err);
+    }
+  };
   return (
     <div className="flex flex-col flex-1">
-      <div className="w-full max-w-md pt-10 mx-auto">
-        <Link
-          to="/"
-          className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-        >
-          <ChevronLeftIcon className="size-5" />
-          Back to dashboard
-        </Link>
-      </div>
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div>
           <div className="mb-5 sm:mb-8">
@@ -83,22 +123,45 @@ export default function SignInForm() {
                 </span>
               </div>
             </div>
-            <form>
+            <Form onSubmit={handleSubmit(onSubmit)}>
               <div className="space-y-6">
                 <div>
-                  <Label>
-                    Email <span className="text-error-500">*</span>{" "}
+                  <Label htmlFor="email" mandatory>
+                    EMAIL
                   </Label>
-                  <Input placeholder="info@gmail.com" />
+                  <Controller
+                    name={`email`}
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        placeholder="Enter email address"
+                        error={!!errors.email}
+                        hint={errors.email?.message || ""}
+                        success={isSubmitted && !errors.email}
+                      />
+                    )}
+                  />
                 </div>
+                {/* <!-- Password --> */}
                 <div>
-                  <Label>
-                    Password <span className="text-error-500">*</span>{" "}
+                  <Label htmlFor="password" mandatory>
+                    PASSWORD
                   </Label>
                   <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
+                    <Controller
+                      name={`password`}
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Enter your password"
+                          error={!!errors.password}
+                          hint={errors.password?.message || ""}
+                          success={isSubmitted && !errors.password}
+                        />
+                      )}
                     />
                     <span
                       onClick={() => setShowPassword(!showPassword)}
@@ -112,27 +175,13 @@ export default function SignInForm() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Checkbox checked={isChecked} onChange={setIsChecked} />
-                    <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
-                      Keep me logged in
-                    </span>
-                  </div>
-                  <Link
-                    to="/reset-password"
-                    className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
                 <div>
                   <Button className="w-full" size="sm">
                     Sign in
                   </Button>
                 </div>
               </div>
-            </form>
+            </Form>
 
             <div className="mt-5">
               <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">

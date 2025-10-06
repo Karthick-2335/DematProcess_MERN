@@ -28,8 +28,7 @@ export default function App() {
         <Routes>
           {/* Dashboard Layout */}
           <Route element={<AppLayout />}>
-            <Route index path="/" element={<Home />} />
-
+            <Route path="/home" element={<Home />} />
             {/* Others Page */}
             <Route path="/profile" element={<UserProfiles />} />
             <Route path="/kycinfo" element={<KycInfo />} />
@@ -57,8 +56,9 @@ export default function App() {
           </Route>
 
           {/* Auth Layout */}
-          <Route path="/signin" element={<SignIn />} />
+          <Route index path="/" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route index path="/signin" element={<SignIn />} />
 
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />

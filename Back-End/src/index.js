@@ -1,5 +1,5 @@
 import express from 'express'
-import testRoutes from './Routes/testRoutes.js'
+import authRoutes from './Routes/authRoutes.js'
 import masterRoutes from './Routes/masterRoutes.js'
 import kycRoutes from './Routes/kycRoutes.js'
 import dotenv from 'dotenv'
@@ -15,7 +15,7 @@ app.use(cors());
 const PORT = process.env.PORT;
 app.use(express.json());
 
-app.use('/api/test',testRoutes);
+app.use('/api/auth',authRoutes);
 app.use('/api/master',masterRoutes)
 app.use('/api/kyc',kycRoutes)
 
